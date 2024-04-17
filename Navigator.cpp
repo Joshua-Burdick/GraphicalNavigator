@@ -1,6 +1,7 @@
 extern "C" {
     #include "glm.h"
 }
+#include <string>
 #include "Headers/Config.h"
 #include "Headers/InputController.h"
 
@@ -8,9 +9,46 @@ GLMmodel* pmodel2 = NULL;
 GLuint importRotate;
 int modelSpin = 0;
 
-void drawmodel_rosevase(void) {
+//Setting White Light Source RGBA
+GLfloat light_ambient[] = { 0.2, 0.2, 0.2, 1.0 },
+light_diffuse[] = { 0.5, 0.5, 0.5, 1.0 },
+light_specular[] = { 0.7, 0.7, 0.7, 1.0 },
+light_position[] = { 0.0, 2.2, -1.0, 1.0 },
+light_position2[] = { 0.0, 2.2, -6.0, -1.0 };
+
+//Setting materials for Red object
+GLfloat material_ambient[] = { 0.3, 0.1, 0.1, 1.0 },
+material_diffuse[] = { 0.4, 0.3, 0.3, 1.0 },
+material_specular[] = { 0.5, 0.4, 0.4, 1.0 },
+material_shininess = 2;
+
+void set_material_props() {
+    glMaterialfv(GL_FRONT, GL_AMBIENT, material_ambient);
+    glMaterialfv(GL_FRONT, GL_DIFFUSE, material_diffuse);
+    glMaterialfv(GL_FRONT, GL_SPECULAR, material_specular);
+    glMaterialf(GL_FRONT, GL_SHININESS, material_shininess);
+}
+
+void set_light_props() {
+    glLightfv(GL_LIGHT1, GL_POSITION, light_position);
+    glLightfv(GL_LIGHT1, GL_AMBIENT, light_ambient);
+    glLightfv(GL_LIGHT1, GL_DIFFUSE, light_diffuse);
+    glLightfv(GL_LIGHT1, GL_SPECULAR, light_specular);
+    glEnable(GL_LIGHT1);
+
+    glLightfv(GL_LIGHT2, GL_POSITION, light_position2);
+    glLightfv(GL_LIGHT2, GL_AMBIENT, light_ambient);
+    glLightfv(GL_LIGHT2, GL_DIFFUSE, light_diffuse);
+    glLightfv(GL_LIGHT2, GL_SPECULAR, light_specular);
+    glEnable(GL_LIGHT2);
+
+    glEnable(GL_LIGHTING);
+}
+
+void drawmodel(std::string modelName) {
     if (!pmodel2) {
-        pmodel2 = glmReadOBJ((char*)"data/f-16.obj");
+        std::string filename = "data/" + modelName + ".obj";
+        pmodel2 = glmReadOBJ((char*)filename.c_str());
         if (!pmodel2) exit(0);
         glmUnitize(pmodel2);
         glmFacetNormals(pmodel2);
@@ -20,11 +58,10 @@ void drawmodel_rosevase(void) {
     glmDraw(pmodel2, GLM_SMOOTH | GLM_MATERIAL);
 }
 
-void drawImportRotate() {
-    //Rose vase - imported
+void drawImportRotate(std::string modelName) {
     glPushMatrix();
     glScalef(0.1, 0.1, 0.1);
-    drawmodel_rosevase();
+    drawmodel(modelName);
     glPopMatrix();
 }
 
@@ -119,6 +156,8 @@ void drawPedestalModel() {
 }
 
 void display(void) {
+    set_material_props();
+    set_light_props();
     glClearColor(0.0, 0.0, 0.0, 0.0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); 
 
@@ -137,16 +176,10 @@ void display(void) {
         glTranslatef(0, 0, 6.0);
         drawRoom();
     glPopMatrix();
+    
+    glutSolidSphere(0.1, 32, 32);
 
-    // Draw doorway over door if in first room
-    if (ZMOVE > Z_MAX) {
-        drawDoorway();
-    }
-
-    // Draw pedestal model behind door if in first room
-    if (ZMOVE < Z_MAX && doorAngle != 0.0f) {
-        drawPedestalModel();
-    }
+    drawDoorway();
 
     // Door
     glPushMatrix();
@@ -163,15 +196,7 @@ void display(void) {
         glEnd();
     glPopMatrix();
 
-    // Draw doorway behind door if in second room
-    if (ZMOVE < Z_MAX) {
-        drawDoorway();
-    }
-
-    // Draw pedestal model in front of door if in second room
-    if (ZMOVE > Z_MAX) {
-        drawPedestalModel();
-    }
+    drawPedestalModel();
 
     glFlush();
 
@@ -182,25 +207,24 @@ int main(int argc, char** argv) {
     // Define window properties
     glutInit(&argc, argv);
     glutInitWindowSize(windowWidth, windowHeight);
-    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
+    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH);
 
     screenWidth = glutGet(GLUT_SCREEN_WIDTH);
     screenHeight = glutGet(GLUT_SCREEN_HEIGHT);
     glutInitWindowPosition((screenWidth / 2) - (windowWidth / 2), (screenHeight / 2) - (windowHeight / 2));
 
-    glEnable(GL_DEPTH_TEST);
-
     // Make window
     glutCreateWindow(WINDOW_NAME);
+    glEnable(GL_DEPTH_TEST);
 
     // Display
     glMatrixMode(GL_PROJECTION);
 
-    gluPerspective(60, aspect, 0, 10);
+    gluPerspective(60, aspect, 0.0001, 20);
 
     importRotate = glGenLists(2);
     glNewList(importRotate, GL_COMPILE);
-    drawImportRotate();
+    drawImportRotate("f-16");
     glEndList();
 
     glutDisplayFunc(display);

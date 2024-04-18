@@ -206,6 +206,7 @@ void display(void) {
         glCallList(importRotate + 1);
     glPopMatrix();
 
+    // Al
     glPushMatrix();
         set_material_props(MetallicTeapot);
         glTranslatef(-0.9, -0.2, -1.0);

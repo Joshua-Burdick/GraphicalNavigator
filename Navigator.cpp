@@ -3,30 +3,32 @@ extern "C" {
 }
 #include <string>
 #include "Headers/Config.h"
+#include "Headers/Materials.h"
 #include "Headers/InputController.h"
 
 GLMmodel* pmodel2 = NULL;
 GLuint importRotate;
 int modelSpin = 0;
 
+struct Light {
+    GLfloat ambient[4];
+    GLfloat diffuse[4];
+    GLfloat specular[4];
+    GLfloat position[4];
+};
+
 //Setting White Light Source RGBA
 GLfloat light_ambient[] = { 0.2, 0.2, 0.2, 1.0 },
 light_diffuse[] = { 0.5, 0.5, 0.5, 1.0 },
-light_specular[] = { 0.7, 0.7, 0.7, 1.0 },
-light_position[] = { 0.0, 2.2, -1.0, 1.0 },
-light_position2[] = { 0.0, 2.2, -6.0, -1.0 };
+light_specular[] = { 0.6, 0.6, 0.6, 1.0 },
+light_position[] = { 0.0, 1.0, 0.0, 1.0 },
+light_position2[] = { 0.0, 1.0, -6.0, 1.0 };
 
-//Setting materials for Red object
-GLfloat material_ambient[] = { 0.3, 0.1, 0.1, 1.0 },
-material_diffuse[] = { 0.4, 0.3, 0.3, 1.0 },
-material_specular[] = { 0.5, 0.4, 0.4, 1.0 },
-material_shininess = 2;
-
-void set_material_props() {
-    glMaterialfv(GL_FRONT, GL_AMBIENT, material_ambient);
-    glMaterialfv(GL_FRONT, GL_DIFFUSE, material_diffuse);
-    glMaterialfv(GL_FRONT, GL_SPECULAR, material_specular);
-    glMaterialf(GL_FRONT, GL_SHININESS, material_shininess);
+void set_material_props(Material material) {
+    glMaterialfv(GL_FRONT, GL_AMBIENT, material.ambient);
+    glMaterialfv(GL_FRONT, GL_DIFFUSE, material.diffuse);
+    glMaterialfv(GL_FRONT, GL_SPECULAR, material.specular);
+    glMaterialf(GL_FRONT, GL_SHININESS, material.shininess);
 }
 
 void set_light_props() {
@@ -55,7 +57,8 @@ void drawmodel(std::string modelName) {
         glmVertexNormals(pmodel2, 90.0);
     }
 
-    glmDraw(pmodel2, GLM_SMOOTH | GLM_MATERIAL);
+    glmDraw(pmodel2, GLM_SMOOTH);
+    pmodel2 = NULL;
 }
 
 void drawImportRotate(std::string modelName) {
@@ -79,35 +82,30 @@ void drawRoom() {
     glBegin(GL_QUADS);
 
     // Ceiling (y = 1.25f)
-    glColor3f(1.0f, 1.0f, 0.0f);     // Yellow
     glVertex3f(X_MAX, Y_MAX, -Z_MAX);
     glVertex3f(-X_MAX, Y_MAX, -Z_MAX);
     glVertex3f(-X_MAX, Y_MAX, Z_MAX);
     glVertex3f(X_MAX, Y_MAX, Z_MAX);
 
     // Floor (y = -0.5f)
-    glColor3f(1.0f, 0.5f, 0.0f);     // Orange
     glVertex3f(X_MAX, Y_MIN, Z_MAX);
     glVertex3f(-X_MAX, Y_MIN, Z_MAX);
     glVertex3f(-X_MAX, Y_MIN, -Z_MAX);
     glVertex3f(X_MAX, Y_MIN, -Z_MAX);
 
     // Front face  (z = 3.0f)
-    glColor3f(1.0f, 0.0f, 0.0f);     // Red
     glVertex3f(X_MAX, Y_MAX, Z_MAX);
     glVertex3f(-X_MAX, Y_MAX, Z_MAX);
     glVertex3f(-X_MAX, Y_MIN, Z_MAX);
     glVertex3f(X_MAX, Y_MIN, Z_MAX);
 
     // Left face (x = -1.5f)
-    glColor3f(0.0f, 0.0f, 1.0f);     // Blue
     glVertex3f(-X_MAX, Y_MAX, Z_MAX);
     glVertex3f(-X_MAX, Y_MAX, -Z_MAX);
     glVertex3f(-X_MAX, Y_MIN, -Z_MAX);
     glVertex3f(-X_MAX, Y_MIN, Z_MAX);
 
     // Right face (x = 1.5f)
-    glColor3f(0.0f, 1.0f, 0.0f);     // Green
     glVertex3f(X_MAX, Y_MAX, -Z_MAX);
     glVertex3f(X_MAX, Y_MAX, Z_MAX);
     glVertex3f(X_MAX, Y_MIN, Z_MAX);
@@ -119,7 +117,6 @@ void drawRoom() {
 void drawDoorway() {
     glBegin(GL_QUADS);
         // Back face: Door frame (z = -3.0f)
-        glColor3f(1.0f, 0.0f, 1.0f);     // Magenta
         glVertex3f(X_MAX, Y_MIN, -Z_MAX);
         glVertex3f(X_MAX / 2, Y_MIN, -Z_MAX);
         glVertex3f(X_MAX / 2, Y_MAX / 2, -Z_MAX);
@@ -142,21 +139,40 @@ void drawPedestalModel() {
         glTranslatef(0, 0, -7.0);
 
         glPushMatrix();
-            glColor3f(0.5f, 0.5f, 0.5f);
             glTranslatef(0, -0.1f, 0);
             glRotatef(90, 1, 0, 0);
             gluCylinder(gluNewQuadric(), 0.2, 0.2, 0.7, 32, 32);
         glPopMatrix();
 
-        glColor3f(0.5, 0.5, 1.0);
         glScalef(4.0,4.0,4.0);
         glRotatef(modelSpin, 0, 1, 0);
         glCallList(importRotate);
     glPopMatrix();
 }
 
+void drawTeapotCube() {
+    // Teapot Cube
+    glPushMatrix();
+        set_material_props(ShadedCube);
+        glTranslatef(0, -0.5, 1.5);
+        glutSolidCube(0.75);
+
+        set_material_props(DiffuseTeapot);
+        glTranslatef(0, 0.45, 0.25);
+        glutSolidTeapot(0.1);
+
+        set_material_props(MetallicTeapot);
+        glTranslatef(-0.25, 0, -0.5);
+        glutSolidTeapot(0.1);
+
+        set_material_props(GlossyTeapot);
+        glTranslatef(0.5, 0, 0);
+        glutSolidTeapot(0.1);
+    glPopMatrix();
+}
+
 void display(void) {
-    set_material_props();
+    set_material_props(WallMaterial);
     set_light_props();
     glClearColor(0.0, 0.0, 0.0, 0.0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); 
@@ -170,15 +186,37 @@ void display(void) {
 
     glTranslatef(XMOVE, 0, ZMOVE);
 
+    // Room
     glPushMatrix();
         drawRoom();
         glRotatef(180, 0, 1, 0);
         glTranslatef(0, 0, 6.0);
         drawRoom();
     glPopMatrix();
-    
-    glutSolidSphere(0.1, 32, 32);
 
+    // Teapot Cube
+    drawTeapotCube();
+
+    // Porsche
+    glPushMatrix();
+        set_material_props(DiffuseTeapot);
+        glTranslatef(0.85, -0.5, 1.25);
+        glRotatef(225, 0, 1, 0);
+        glScalef(3.0, 3.0, 3.0);
+        glCallList(importRotate + 1);
+    glPopMatrix();
+
+    glPushMatrix();
+        set_material_props(MetallicTeapot);
+        glTranslatef(-0.9, -0.2, -1.0);
+        glRotatef(60, 0, 1, 0);
+        glScalef(6.0, 6.0, 6.0);
+        glCallList(importRotate + 3);
+    glPopMatrix();
+
+    set_material_props(WallMaterial);
+
+    // Doorway
     drawDoorway();
 
     // Door
@@ -196,7 +234,14 @@ void display(void) {
         glEnd();
     glPopMatrix();
 
-    drawPedestalModel();
+    drawPedestalModel(); // F-16
+
+    // Soccerball
+    glPushMatrix();
+        glTranslatef(1.0, -0.5, -8.0);
+        glScalef(2.0, 2.0, 2.0);
+        glCallList(importRotate + 2);
+    glPopMatrix();
 
     glFlush();
 
@@ -222,9 +267,21 @@ int main(int argc, char** argv) {
 
     gluPerspective(60, aspect, 0.0001, 20);
 
-    importRotate = glGenLists(2);
+    importRotate = glGenLists(3);
     glNewList(importRotate, GL_COMPILE);
     drawImportRotate("f-16");
+    glEndList();
+
+    glNewList(importRotate + 1, GL_COMPILE);
+    drawImportRotate("porsche");
+    glEndList();
+
+    glNewList(importRotate + 2, GL_COMPILE);
+    drawImportRotate("soccerball");
+    glEndList();
+
+    glNewList(importRotate + 3, GL_COMPILE);
+    drawImportRotate("al");
     glEndList();
 
     glutDisplayFunc(display);
